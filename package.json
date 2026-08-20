@@ -1,0 +1,12 @@
+{
+  "name": "edtech-rate-limited-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/queue_worker.ts",
+    "test": "tsx src/queue_worker.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": { "zod": "^3.23.8" },
+  "devDependencies": { "tsx": "^4.19.2", "typescript": "^5.6.3" }
+}

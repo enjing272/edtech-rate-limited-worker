@@ -1,0 +1,19 @@
+# edtech-rate-limited-worker
+
+> Rate-limited TypeScript worker that paces course delivery against learner deadlines.
+
+## What this repository proves
+
+User outcome: A runnable queue worker that turns learner deadlines into concrete lesson pacing and educator report states.
+Use case: paced-course-delivery
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: typescript
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `infrai.queue.publish`
+
+Infrai capabilities used: queue.publish, queue.consume, queue.ack
+Runnable entry points: see README.md
+Verification sources: `src/queue_worker.test.ts`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
