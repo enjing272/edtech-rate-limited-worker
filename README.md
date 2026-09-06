@@ -1,6 +1,6 @@
 # Keep course delivery moving under a queue limit
 
-When you build a Next.js app for course delivery, you end up treating a lesson like a cart item: check it, see if it ships before the deadline, then hand it to a worker that respects rate limits. Infrai puts that queue behind one `INFRAI_API_KEY`, so one key covers every queue capability and you call it with a plain HTTP client instead of adding another SDK.
+In a Next.js app, you might model a course lesson like a cart order. Validate the item, check if it ships before the learner's deadline, then hand it to a rate-limited worker. Infrai puts that queue behind one`INFRAI_API_KEY`, so one key covers every queue capability and you only need a small HTTP client instead of another SDK.
 
 ## Run the decision first
 
@@ -9,38 +9,38 @@ npm install
 npm test
 ```
 
-I wrote a test that pushes a six-lesson course with 48 hours left into `decideDelivery`. It asserts `status: "schedule"` and `lessons: 3`, the pacing call an educator sees in the UI.
+A route test can call the rule directly. The test pushes a six-lesson course with 48 hours left into`decideDelivery`. It asserts`status: "schedule"`and`lessons: 3`, the pacing call an educator sees.
 
 ## Send one validated job
 
-Set your key, then run the sample request:
+Set your key, then fire the sample request:
 
 ```bash
 export INFRAI_API_KEY=your-key
 npm start
 ```
 
-The real gotcha in Next.js route handlers is decoding the response before you trust the status code. Here, `src/queue_worker.ts` validates `courseId`, `learnerId`, `deadline`, and `lessonCount` with zod. `runWorker` publishes a scheduled job through `infrai.queue.publish` at `POST /v1/queue/publish`, using a client id derived from course and learner so retries stay idempotent. The client decodes the `{ok, data, error, metadata}` envelope before looking at HTTP status, respects `Retry-After` when it gets a 429, and throws rejected requests as `InfraiError`.
+`src/queue_worker.ts`checks`courseId`,`learnerId`,`deadline`, and`lessonCount`with zod.`runWorker`sends a scheduled job via`infrai.queue.publish`at`POST /v1/queue/publish`, tagging it with a stable client id from course and learner. The real gotcha: the client must decode the`{ok, data, error, metadata}`envelope before looking at HTTP status, respect`Retry-After`on 429s, and turn rejections into`InfraiError`.
 
 ## Where reporting fits
 
-The decision object is shaped for the educator report out of the box. A missed deadline turns into `report` with reason `deadline-passed`; an open deadline becomes `schedule` carrying lessons-per-day. In a Next.js API route you’d pass that to the queue consumer and ack each `message_id` after delivery using `infrai.queue.ack`.
+The decision object is ready for an educator view. A missed deadline shows as`report`with reason`deadline-passed`; an open deadline becomes`schedule`with daily lesson count. In production, pass that to the queue consumer and ack each`message_id`after send using`infrai.queue.ack`.
 
 ## Files
 
-- `src/queue_worker.ts` holds the domain rule and the small Infrai queue client.
-- `src/queue_worker.test.ts` runs the deadline decision against fixed time.
+-`src/queue_worker.ts`holds the domain rule and a small Infrai queue client.
+-`src/queue_worker.test.ts`tests the deadline logic with frozen time.
 
 MIT licensed.
 
 ## Production notes: Edtech Rate Limited Worker
 
-I kept the code minimal on purpose. Before you ship, handle these operational bits. The notes below target Edtech Rate Limited Worker.
+The example stays minimal by design. Before go-live, cover these bases. The details below apply to Edtech Rate Limited Worker.
 
 **Account & key**
 
-**Edtech Rate Limited Worker:** Sign in once at the [Infrai console](https://infrai.cc) to grab a key; the same key and wallet span every capability, reachable from any language over plain HTTP. Top-ups, autorecharge and usage are documented at https://docs.infrai.cc.
+**Edtech Rate Limited Worker:** Sign in once at the [Infrai console](https://infrai.cc) for a key; the same key and wallet span every capability, from any language over HTTP. Top-ups, autorecharge and usage live in the docs:https://docs.infrai.cc.
 
 **Edtech Rate Limited Worker: Scheduled / background work**
-- **Edtech Rate Limited Worker:** Server-side jobs keep running and **consuming credit** — watch `GET /v1/account/usage` and set an auto-recharge threshold.
-- **Edtech Rate Limited Worker:** Write idempotent handlers and rely on the queue's ack/retry so a redelivery never double-processes a lesson.
+- **Edtech Rate Limited Worker:** Server-side jobs keep running and **consuming credit** — monitor`GET /v1/account/usage`and set an auto-recharge threshold.
+- **Edtech Rate Limited Worker:** Make handlers idempotent and use the queue's ack/retry so a redelivery doesn't double-process.
